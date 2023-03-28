@@ -30,6 +30,7 @@ type Service struct {
 	GmailSvc *gmail.Service
 }
 
+// NewGmailService retrieves a service based on the configuration files and permission scopes.
 func NewGmailService(credentialsFilePath string, scopes ...string) (*Service, error) {
 	srv, err := GetGmailServiceFromFile(credentialsFilePath, scopes...)
 
@@ -40,8 +41,8 @@ func NewGmailService(credentialsFilePath string, scopes ...string) (*Service, er
 }
 
 // MarkAs allows you to mark an email with a specific label using the gmail.ModifyMessageRequest struct.
-func (s *Service) MarkAs(msg *gmail.Message, req *gmail.ModifyMessageRequest) (*gmail.Message, error) {
-	return s.GmailSvc.Users.Messages.Modify("me", msg.Id, req).Do()
+func (s *Service) MarkAs(msgId string, req *gmail.ModifyMessageRequest) (*gmail.Message, error) {
+	return s.GmailSvc.Users.Messages.Modify("me", msgId, req).Do()
 }
 
 // MarkAllAsRead removes the UNREAD label from all emails.
@@ -59,7 +60,7 @@ func (s *Service) MarkAllAsRead() error {
 
 	// For each UNREAD message, request to remove the "UNREAD" label (thus marking it as "READ").
 	for _, msg := range msgs {
-		if _, err := s.MarkAs(msg, req); err != nil {
+		if _, err = s.MarkAs(msg.Id, req); err != nil {
 			return err
 		}
 	}
@@ -74,17 +75,17 @@ func (s *Service) Query(query string) ([]*gmail.Message, error) {
 	if err != nil {
 		return []*gmail.Message{}, err
 	}
-	msgs, err := s.MessageByID(inbox)
+	msgs, err := s.MessagesByID(inbox)
 	if err != nil {
 		return msgs, err
 	}
 	return msgs, nil
 }
 
-// MessageByID gets an email individually by ID. This is necessary because this is how the gmail API is set [0][1] up apparently (but why?).
+// MessagesByID gets a group of messages by their ids ID. This is necessary because this is how the gmail API is set [0][1] up apparently (but why?).
 // [0] https://developers.google.com/gmail/api/v1/reference/users/messages/get
 // [1] https://stackoverflow.com/questions/36365172/message-payload-is-always-null-for-all-messages-how-do-i-get-this-data
-func (s *Service) MessageByID(msgs *gmail.ListMessagesResponse) ([]*gmail.Message, error) {
+func (s *Service) MessagesByID(msgs *gmail.ListMessagesResponse) ([]*gmail.Message, error) {
 	var msgSlice []*gmail.Message
 	for _, v := range msgs.Messages {
 		msg, err := s.GmailSvc.Users.Messages.Get("me", v.Id).Do()
@@ -94,6 +95,16 @@ func (s *Service) MessageByID(msgs *gmail.ListMessagesResponse) ([]*gmail.Messag
 		msgSlice = append(msgSlice, msg)
 	}
 	return msgSlice, nil
+}
+
+// GetMessage retrieves a message by its ID
+func (s *Service) GetMessage(msgId string) (*gmail.Message, error) {
+	return s.GmailSvc.Users.Messages.Get("me", msgId).Do()
+}
+
+// GetAttachment returns and attachment by its ID
+func (s *Service) GetAttachment(msgId, attachmentId string) (*gmail.MessagePartBody, error) {
+	return s.GmailSvc.Users.Messages.Attachments.Get("me", msgId, attachmentId).Do()
 }
 
 // GetMessages gets and returns gmail messages
@@ -106,7 +117,7 @@ func (s *Service) GetMessages(howMany uint) ([]*gmail.Message, error) {
 		return msgSlice, err
 	}
 
-	msgs, err := s.MessageByID(inbox)
+	msgs, err := s.MessagesByID(inbox)
 	if err != nil {
 		return msgs, err
 	}
