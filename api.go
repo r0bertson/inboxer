@@ -25,10 +25,6 @@ func SetupGmailService(credentialsPath string, scope ...string) error {
 	if err != nil {
 		return err
 	}
-	if _, err = tokenFromFile(cacheFile); err == nil {
-		log.Println("gmail service credentials already set")
-		return nil
-	}
 
 	credentialsFile, err := os.ReadFile(credentialsPath)
 	if err != nil {

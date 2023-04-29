@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-// go:run main.go credentials_filepath.json
+// go run main.go credentials_filepath.json
 func main() {
 	args := os.Args[1:]
 	if len(args) == 0 {
